@@ -20,7 +20,7 @@ from . import build_utils
 class NeuralNetwork(object):
     """Neural Network Base Class"""
 
-    def __init__(self, num_features=1, num_outputs=1, layers=2, units=50, activation=tf.nn.relu, dropout_rate=0.5, optimizer=None, lengthscale=None):
+    def __init__(self, num_features=1, num_outputs=1, layers=2, units=50, activation=tf.nn.relu, dropout_rate=0.5, optimizer=None):
 
         # inputs and outputs
         self.num_features = num_features
@@ -31,14 +31,6 @@ class NeuralNetwork(object):
         self.activation = activation
         self.dropout_rate = dropout_rate
         self.units = units
-
-        if lengthscale is not None:
-            N = 100
-            lengthscale = 1e-2
-            reg = lengthscale**2 * (1 - self.dropout_rate) / (2. * N * tau)
-            self.reg = l2(reg)
-        else:
-            self.reg = None
 
         # set up the graph
         tf.reset_default_graph()
@@ -98,8 +90,16 @@ class MLP(NeuralNetwork):
 class BNDropout(NeuralNetwork):
     """Bayesian Neural Network using MC Dropout"""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, lengthscale=None, *args, **kwargs):
         self.name = "BNDropout"
+
+        if lengthscale is not None:
+            N = 100
+            reg = lengthscale**2 * (1 - self.dropout_rate) / (2. * N * tau)
+            self.reg = l2(reg)
+        else:
+            self.reg = None
+
         NeuralNetwork.__init__(self, *args, **kwargs)
 
     def _build(self):

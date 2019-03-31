@@ -16,7 +16,7 @@ setuptools.setup(
     description="Package for implementing bayesian deep learning models in python.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/looyclark/kassandra",
+    url="https://github.com/James-Montgomery/kassandra",
     packages=setuptools.find_packages(),
     install_requires=[
         'tensorflow==1.11.0',
