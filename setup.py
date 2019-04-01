@@ -10,7 +10,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="kassandra",
-    version="0.0.1",
+    version="0.0.11",
     author="James Montgomery",
     author_email="jamesoneillmontgomery@gmail.com",
     description="Package for implementing bayesian deep learning models in python.",

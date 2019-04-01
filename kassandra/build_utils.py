@@ -20,7 +20,7 @@ def build(self, bayes):
         l = tf.layers.dense(inputs=d,
                             units=self.units,
                             activation=self.activation,
-                            W_regulizer=self.reg,
+                            kernel_regularizer=self.reg,
                             name="layer_{}".format(layer),
                             reuse=tf.AUTO_REUSE)
 
@@ -47,6 +47,8 @@ def build_mlp(self):
                             reuse=tf.AUTO_REUSE)
 
     loss = tf.losses.mean_squared_error(y, mu)
+    if self.reg is not None:
+        loss += tf.losses.get_regularization_losses()
 
     return {
         "x" : x,
@@ -61,22 +63,33 @@ def build_mlp(self):
 
 def build_bn_dropout(self):
 
+    if self.lengthscale is not None:
+        tau = 1.0
+        N = self.train_samples
+        reg = self.lengthscale**2 * (1 - self.dropout_rate) / (2. * N * tau)
+        self.reg = tf.contrib.layers.l2_regularizer(reg)
+
     x, y, d = build(self, True)
 
     mu = tf.layers.dense(inputs=d,
                             units=self.num_outputs,
                             activation=None,
+                            kernel_regularizer=self.reg,
                             name="mu",
                             reuse=tf.AUTO_REUSE)
 
     sigma = tf.layers.dense(inputs=d,
                             units=self.num_outputs,
                             activation=tf.nn.softplus,
+                            kernel_regularizer=self.reg,
                             name="sigma",
                             reuse=tf.AUTO_REUSE)
 
     likelihood = tf.distributions.Normal(loc=mu, scale=sigma)
+
     loss = tf.reduce_mean(-likelihood.log_prob(y))
+    if self.reg is not None:
+        loss += tf.losses.get_regularization_losses()
 
     return {
         "x" : x,

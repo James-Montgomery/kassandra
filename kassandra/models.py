@@ -6,12 +6,8 @@ import tensorflow as tf
 import progressbar
 #tf.set_random_seed(2)
 
-from keras.regularizers import l2
-
 from . import build_utils
-
-# https://github.com/keras-team/keras/issues/9412
-# https://github.com/yaringal/DropoutUncertaintyExps/blob/master/net/net.py
+from . import utils
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Base Class
@@ -31,6 +27,7 @@ class NeuralNetwork(object):
         self.activation = activation
         self.dropout_rate = dropout_rate
         self.units = units
+        self.reg = None
 
         # set up the graph
         tf.reset_default_graph()
@@ -45,11 +42,12 @@ class NeuralNetwork(object):
         # start session
         self.session.run(tf.global_variables_initializer())
 
-    def train(self, x_, y_, epochs=100, show_progress=True, show_loss=False):
+    def train(self, x_train, y_train, epochs=100, show_progress=True, show_loss=False, shuffle=False, minibatches=None):
 
-        # training data
-        feed_dict = {self.tensors["x"] : x_.reshape(-1, self.num_features),
-                     self.tensors["y"] : y_.reshape(-1, self.num_outputs)}
+        N = x_train.shape[0]
+
+        if shuffle:
+            x_train, y_train = utils.shuffle(x_train, y_train, N)
 
         # set up progress bar
         if show_progress:
@@ -58,9 +56,27 @@ class NeuralNetwork(object):
         else:
             n_iter = range(epochs)
 
+        if minibatches is None:
+            feed_dict = {self.tensors["x"] : x_train.reshape(-1, self.num_features),
+                         self.tensors["y"] : y_train.reshape(-1, self.num_outputs)}
+        else:
+            batch_size = int(N / minibatches)
+            assert batch_size > 0, "Specified too many minibatches for number of train samples."
+
         # start training
         for i in n_iter:
-            l, _ = self.session.run([self.tensors["loss"], self.step_op], feed_dict)
+
+            if minibatches is None:
+                l, _ = self.session.run([self.tensors["loss"], self.step_op], feed_dict)
+
+            else:
+                batch_idx = np.random.choice(N, batch_size, replace=False)
+
+                feed_dict = {self.tensors["x"] : x_train[batch_idx].reshape(-1, self.num_features),
+                            self.tensors["y"] : y_train[batch_idx].reshape(-1, self.num_outputs)}
+
+                l, _ = self.session.run([self.tensors["loss"], self.step_op], feed_dict)
+
 
             if show_loss and i % 1000 ==0:
                 print("loss {}".format(l))
@@ -90,23 +106,18 @@ class MLP(NeuralNetwork):
 class BNDropout(NeuralNetwork):
     """Bayesian Neural Network using MC Dropout"""
 
-    def __init__(self, lengthscale=None, *args, **kwargs):
+    def __init__(self, train_samples=100, lengthscale=None, *args, **kwargs):
         self.name = "BNDropout"
-
-        if lengthscale is not None:
-            N = 100
-            reg = lengthscale**2 * (1 - self.dropout_rate) / (2. * N * tau)
-            self.reg = l2(reg)
-        else:
-            self.reg = None
+        self.train_samples = train_samples
+        self.lengthscale = lengthscale
 
         NeuralNetwork.__init__(self, *args, **kwargs)
 
     def _build(self):
         return build_utils.build_bn_dropout(self)
 
-    def predict(self, x_, n_estimates=10):
-        feed_dict = {self.tensors["x"] : x_[:, np.newaxis]}
+    def predict(self, x_test, n_estimates=10):
+        feed_dict = {self.tensors["x"] : x_test[:, np.newaxis]}
 
         samples = np.asarray([
             self.session.run([self.tensors["mu"], self.tensors["sigma"]], feed_dict)
@@ -117,13 +128,13 @@ class BNDropout(NeuralNetwork):
 
         return np.asarray([mu, sigma]).squeeze()
 
-    def sample_posterior(self, x_):
-        feed_dict = {self.tensors["x"] : x_[:, np.newaxis]}
+    def sample_posterior(self, x_test):
+        feed_dict = {self.tensors["x"] : x_test[:, np.newaxis]}
         posterior_sample = self.session.run([self.tensors["mu"], self.tensors["sigma"]], feed_dict)
         return np.asarray(posterior_sample).squeeze()
 
-    def sample_posterior_predictive(self, x_):
-        posterior_sample = self.sample_posterior(x_)
+    def sample_posterior_predictive(self, x_test):
+        posterior_sample = self.sample_posterior(x_test)
         mean, cov = posterior_sample[0,:], np.eye(posterior_sample.shape[1]) * posterior_sample[1,:]
         return st.multivariate_normal(mean=mean, cov=cov).rvs(1)
 
