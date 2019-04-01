@@ -14,11 +14,11 @@
 #
 from shutil import copyfile
 
-src = "../README.md"
+src = "../../README.md"
 dst = "./markdown/README.md"
 copyfile(src, dst)
 
-src = "../LICENSE.md"
+src = "../../LICENSE.md"
 dst = "./markdown/LICENSE.md"
 copyfile(src, dst)
 
@@ -61,6 +61,7 @@ source_parsers = {
 
 source_suffix = ['.rst', '.md']
 
+
 # The master toctree document.
 master_doc = 'index'
 
@@ -74,7 +75,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = []
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
