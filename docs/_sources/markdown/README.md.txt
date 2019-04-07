@@ -18,9 +18,19 @@ These instructions will get you a copy of the project up and running on your loc
 
 ### Installing
 
-
 ### Basic Examples
 
+Regression Examples
+* [Multi Layer Perceptron](https://github.com/James-Montgomery/kassandra/tree/master/docs/examples/Regression/Multi_Layer_Perceptron.ipynb)
+* [Gaussian Process](https://github.com/James-Montgomery/kassandra/tree/master/docs/examples/Regression/Gaussian_Process.ipynb)
+* [Bayesian Neural Network with MCDropout](https://github.com/James-Montgomery/kassandra/tree/master/docs/examples/Regression/Bayesian_Network_Dropout.ipynb)
+* [Bayesian Neural Network with Variational Inference](https://github.com/James-Montgomery/kassandra/tree/master/docs/examples/Regression/Bayesian_Network_Variational_Inference.ipynb)
+
+Classification Examples (TBD)
+* Multi Layer Perceptron
+* Gaussian Process
+* Bayesian Neural Network with MCDropout
+* Bayesian Neural Network with Variational Inference
 
 ## Testing
 
