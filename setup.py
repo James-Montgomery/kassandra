@@ -10,7 +10,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="kassandra",
-    version="0.0.11",
+    version="0.0.12",
     author="James Montgomery",
     author_email="jamesoneillmontgomery@gmail.com",
     description="Package for implementing bayesian deep learning models in python.",
@@ -19,7 +19,8 @@ setuptools.setup(
     url="https://github.com/James-Montgomery/kassandra",
     packages=setuptools.find_packages(),
     install_requires=[
-        'tensorflow==1.11.0',
+        'tensorflow==1.13.1',
+        'tensorflow-probability==0.6.0',
         'numpy>=1.15.1',
         'scipy>=1.1.0',
         'matplotlib>=2.2.3',

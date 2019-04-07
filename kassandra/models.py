@@ -9,6 +9,9 @@ import progressbar
 from . import build_utils
 from . import utils
 
+import warnings
+warnings.filterwarnings("ignore")
+
 # ---------------------------------------------------------------------------------------------------------------------
 # Base Class
 # ---------------------------------------------------------------------------------------------------------------------
@@ -16,7 +19,7 @@ from . import utils
 class NeuralNetwork(object):
     """Neural Network Base Class"""
 
-    def __init__(self, num_features=1, num_outputs=1, layers=2, units=50, activation=tf.nn.relu, dropout_rate=0.5, optimizer=None):
+    def __init__(self, num_features=1, num_outputs=1, layers=2, units=50, activation=tf.nn.relu, optimizer=None):
 
         # inputs and outputs
         self.num_features = num_features
@@ -25,7 +28,6 @@ class NeuralNetwork(object):
         # build specifications
         self.layers = layers
         self.activation = activation
-        self.dropout_rate = dropout_rate
         self.units = units
         self.reg = None
 
@@ -42,7 +44,7 @@ class NeuralNetwork(object):
         # start session
         self.session.run(tf.global_variables_initializer())
 
-    def train(self, x_train, y_train, epochs=100, show_progress=True, show_loss=False, shuffle=False, minibatches=None):
+    def train(self, x_train, y_train, epochs=100, show_progress=True, show_loss=False, shuffle=False, minibatches=1):
 
         N = x_train.shape[0]
 
@@ -56,20 +58,13 @@ class NeuralNetwork(object):
         else:
             n_iter = range(epochs)
 
-        if minibatches is None:
-            feed_dict = {self.tensors["x"] : x_train.reshape(-1, self.num_features),
-                         self.tensors["y"] : y_train.reshape(-1, self.num_outputs)}
-        else:
-            batch_size = int(N / minibatches)
-            assert batch_size > 0, "Specified too many minibatches for number of train samples."
+        batch_size = int(N / minibatches)
+        assert batch_size > 0, "Specified too many minibatches for number of train samples."
 
         # start training
-        for i in n_iter:
+        with utils.Timer():
+            for i in n_iter:
 
-            if minibatches is None:
-                l, _ = self.session.run([self.tensors["loss"], self.step_op], feed_dict)
-
-            else:
                 batch_idx = np.random.choice(N, batch_size, replace=False)
 
                 feed_dict = {self.tensors["x"] : x_train[batch_idx].reshape(-1, self.num_features),
@@ -78,8 +73,8 @@ class NeuralNetwork(object):
                 l, _ = self.session.run([self.tensors["loss"], self.step_op], feed_dict)
 
 
-            if show_loss and i % 1000 ==0:
-                print("loss {}".format(l))
+                if show_loss and i % 1000 ==0:
+                    print("loss {}".format(l))
 
 # ---------------------------------------------------------------------------------------------------------------------
 # MLP
@@ -88,8 +83,9 @@ class NeuralNetwork(object):
 class MLP(NeuralNetwork):
     """Multi-Layer Perceptron"""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, dropout_rate=0.5, *args, **kwargs):
         self.name = "MLP"
+        self.dropout_rate = dropout_rate
         NeuralNetwork.__init__(self, *args, **kwargs)
 
     def _build(self):
@@ -106,8 +102,9 @@ class MLP(NeuralNetwork):
 class BNDropout(NeuralNetwork):
     """Bayesian Neural Network using MC Dropout"""
 
-    def __init__(self, train_samples=100, lengthscale=None, *args, **kwargs):
+    def __init__(self, dropout_rate=0.5, train_samples=100, lengthscale=None, *args, **kwargs):
         self.name = "BNDropout"
+        self.dropout_rate = dropout_rate
         self.train_samples = train_samples
         self.lengthscale = lengthscale
 
@@ -141,3 +138,45 @@ class BNDropout(NeuralNetwork):
 # ---------------------------------------------------------------------------------------------------------------------
 # BNVI
 # ---------------------------------------------------------------------------------------------------------------------
+
+class BNVI(NeuralNetwork):
+    """Bayesian Neural Network using Variational Inference"""
+
+    def __init__(self, train_samples=100, p_mean=0.0, p_std=1.0, q_mean=0.0, q_std=1.0, *args, **kwargs):
+        self.name = "BNVI"
+        self.train_samples = train_samples
+
+        # prior parameters
+        self.p_mean = p_mean
+        self.p_std = p_std
+
+        # variational parameters
+        self.q_mean = q_mean
+        self.q_std = q_std
+
+        NeuralNetwork.__init__(self, *args, **kwargs)
+
+    def _build(self):
+        return build_utils.build_bn_vi(self)
+
+    def predict(self, x_test, n_estimates=10):
+        feed_dict = {self.tensors["x"] : x_test[:, np.newaxis]}
+
+        samples = np.asarray([
+            self.session.run([self.tensors["mu"], self.tensors["sigma"]], feed_dict)
+            for i in range(n_estimates)
+        ]).squeeze()
+
+        mu, sigma = samples[:,0,:].mean(axis=0), samples[:,1,:].mean(axis=0)
+
+        return np.asarray([mu, sigma]).squeeze()
+
+    def sample_posterior(self, x_test):
+        feed_dict = {self.tensors["x"] : x_test[:, np.newaxis]}
+        posterior_sample = self.session.run([self.tensors["mu"], self.tensors["sigma"]], feed_dict)
+        return np.asarray(posterior_sample).squeeze()
+
+    def sample_posterior_predictive(self, x_test):
+        posterior_sample = self.sample_posterior(x_test)
+        mean, cov = posterior_sample[0,:], np.eye(posterior_sample.shape[1]) * posterior_sample[1,:]
+        return st.multivariate_normal(mean=mean, cov=cov).rvs(1)
