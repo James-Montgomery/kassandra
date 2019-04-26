@@ -25,6 +25,6 @@ Welcome to Kassandra's documentation!
    :maxdepth: 1
    :caption: Classification Examples (TBD):
 
-   Jupyter notebooks with code for all examples can be found HERE_.
+Jupyter notebooks with code for all examples can be found HERE_.
 
-   .. _HERE: https://github.com/James-Montgomery/kassandra/tree/master/docs/source/markdown/examples
+.. _HERE: https://github.com/James-Montgomery/kassandra/tree/master/docs/source/markdown/examples
