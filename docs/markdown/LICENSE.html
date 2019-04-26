@@ -78,9 +78,20 @@
               
             
             
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption"><span class="caption-text">Overview:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="README.html">Kassandra</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Regression Examples:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="examples/Regression/Multi_Layer_Perceptron.html">Multi-Layer Perceptron</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/Regression/Gaussian_Process.html">Gaussian Process (with Squidward)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/Regression/Bayesian_Network_Dropout.html">Bayesian Neural Network with MCDropout</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples/Regression/Bayesian_Network_Variational_Inference.html">Bayesian Neural Network with Variational Inference</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Classification Examples (TBD):</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference external" href=".. _HERE: https://github.com/James-Montgomery/kassandra/tree/master/docs/source/markdown/examples">.. _HERE: https://github.com/James-Montgomery/kassandra/tree/master/docs/source/markdown/examples</a></li>
 </ul>
 
             
@@ -145,7 +156,31 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <p>Copyright 2018 James Montgomery</p>
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast,
+.nboutput.nblast {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast + .nbinput {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<p>Copyright 2018 James Montgomery</p>
 <p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
 <p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
 <p>THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>

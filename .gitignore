@@ -1,8 +1,6 @@
 # Compiled python modules.
 *.pyc
-
-# Setuptools distribution folder.
-/dist/
+/dask-worker-space
 
 # Python egg metadata, regenerated from source files by setuptools.
 /*.egg-info
@@ -14,9 +12,15 @@
 # Mac files
 .DS_Store
 
+# IDE
+.idea
+*.xml
+*.iml
+
 # pypi build files
 build
 dist
+/dist/
 squidward.egg-info
 
 # testing files

@@ -1,25 +1,31 @@
 import scipy.stats as st
 import numpy as np
-#np.random.seed(592)
+import progressbar
 
 import tensorflow as tf
-import progressbar
-#tf.set_random_seed(2)
+if type(tf.contrib) != type(tf): tf.contrib._warning = None # remove stupid tf contrib warning
+tf.logging.set_verbosity(tf.logging.ERROR)
 
-from . import build_utils
-from . import utils
+# tf.set_random_seed(2)
 
-import warnings
-warnings.filterwarnings("ignore")
+from kassandra import build_utils
+from kassandra import utils
+
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Base Class
 # ---------------------------------------------------------------------------------------------------------------------
 
+supported_acitvations = {
+    "relu": tf.nn.relu,
+    "tanh": tf.nn.tanh
+}
+
+
 class NeuralNetwork(object):
     """Neural Network Base Class"""
 
-    def __init__(self, num_features=1, num_outputs=1, layers=2, units=50, activation=tf.nn.relu, optimizer=None):
+    def __init__(self, num_features=1, num_outputs=1, layers=2, units=50, activation="relu", optimizer=None):
 
         # inputs and outputs
         self.num_features = num_features
@@ -27,9 +33,13 @@ class NeuralNetwork(object):
 
         # build specifications
         self.layers = layers
-        self.activation = activation
         self.units = units
         self.reg = None
+
+        try:
+            self.activation = supported_acitvations[activation]
+        except:
+            raise Exception("{} is not a supported activation function.".format(activation))
 
         # set up the graph
         tf.reset_default_graph()
@@ -138,6 +148,7 @@ class BNDropout(NeuralNetwork):
 # ---------------------------------------------------------------------------------------------------------------------
 # BNVI
 # ---------------------------------------------------------------------------------------------------------------------
+
 
 class BNVI(NeuralNetwork):
     """Bayesian Neural Network using Variational Inference"""

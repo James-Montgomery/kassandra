@@ -8,6 +8,23 @@ Welcome to Kassandra's documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Overview:
 
    markdown/README
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Regression Examples:
+
+   markdown/examples/Regression/Multi_Layer_Perceptron
+   markdown/examples/Regression/Gaussian_Process
+   markdown/examples/Regression/Bayesian_Network_Dropout
+   markdown/examples/Regression/Bayesian_Network_Variational_Inference
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Classification Examples (TBD):
+
+   Jupyter notebooks with code for all examples can be found HERE_.
+
+   .. _HERE: https://github.com/James-Montgomery/kassandra/tree/master/docs/source/markdown/examples

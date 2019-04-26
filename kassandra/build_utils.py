@@ -1,21 +1,16 @@
-import numpy as np
-#np.random.seed(592)
-
 import tensorflow as tf
+if type(tf.contrib) != type(tf): tf.contrib._warning = None # remove stupid tf contrib warning
+tf.logging.set_verbosity(tf.logging.ERROR)
+
 import tensorflow_probability as tfp
 tfd = tfp.distributions
+
 #tf.set_random_seed(2)
-
-import numpy as np
-import model_viz as mv
-import matplotlib.pyplot as plt
-
-import warnings
-warnings.filterwarnings("ignore")
 
 # ---------------------------------------------------------------------------------------------------------------------
 # Base Function
 # ---------------------------------------------------------------------------------------------------------------------
+
 
 def build(self, bayes):
 
@@ -45,6 +40,7 @@ def build(self, bayes):
 # MLP
 # ---------------------------------------------------------------------------------------------------------------------
 
+
 def build_mlp(self):
 
     x, y, d = build(self, False)
@@ -69,6 +65,7 @@ def build_mlp(self):
 # ---------------------------------------------------------------------------------------------------------------------
 # BNDropout
 # ---------------------------------------------------------------------------------------------------------------------
+
 
 def build_bn_dropout(self):
 
@@ -112,10 +109,12 @@ def build_bn_dropout(self):
 # BNVI
 # ---------------------------------------------------------------------------------------------------------------------
 
+
 def VariationalParameter(name, shape, constraint=None, mean=0.0, std=1.0):
     means = tf.get_variable(name+'_mean', initializer = mean*tf.ones(shape), constraint=constraint)
     stds = tf.nn.softplus( tf.get_variable(name+'_std', initializer = std*tf.ones(shape)) )
     return tfd.Normal(loc=means, scale=stds)
+
 
 def build_layer(self, input_tensor, w_shape, b_shape, layer_num, activation=None):
 
@@ -144,13 +143,13 @@ def build_layer(self, input_tensor, w_shape, b_shape, layer_num, activation=None
                                                name="kl_b{}".format(layer_num))
         kl = tf.math.reduce_sum(kl_w) + tf.math.reduce_sum(kl_b)
 
-
         h =  tf.matmul(input_tensor, qw.sample()) + qb.sample()
 
         if activation is not None:
             h =  activation( h )
 
         return h, kl
+
 
 def build_bn_vi(self):
     # Placeholders
