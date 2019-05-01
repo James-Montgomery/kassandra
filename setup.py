@@ -19,8 +19,13 @@ setuptools.setup(
     url="https://github.com/James-Montgomery/kassandra",
     packages=setuptools.find_packages(),
     install_requires=[
-        'tensorflow==1.13.1',
-        'tensorflow-probability==0.6.0',
+        'bleach',
+        'docutils',
+        'Pygments',
+        'tensorflow==2.0.0-alpha0', # Tensorflow 2.0
+        'tf-nightly-2.0-preview', # Tensorflow Probability
+        'tfp-nightly', # Tensorflow Probability
+        'progressbar',
         'numpy>=1.15.1',
         'scipy>=1.1.0',
         'matplotlib>=2.2.3',
