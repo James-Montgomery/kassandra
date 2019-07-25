@@ -1,6 +1,18 @@
 import random
 import time
 
+import logging
+
+logging.basicConfig(level=logging.WARNING)
+logger = logging.getLogger(__name__)
+
+
+def override(f):
+    """
+
+    """
+    return f
+
 
 def shuffle(x, y, N):
     """

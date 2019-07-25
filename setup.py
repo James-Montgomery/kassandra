@@ -22,9 +22,9 @@ setuptools.setup(
         'bleach',
         'docutils',
         'Pygments',
-        'tensorflow==2.0.0-alpha0', # Tensorflow 2.0
-        'tf-nightly-2.0-preview', # Tensorflow Probability
-        'tfp-nightly', # Tensorflow Probability
+        'tensorflow==2.0.0a0',  # Tensorflow 2.0
+        'tf-nightly-2.0-preview==2.0.0.dev20190501',  # Tensorflow Probability
+        'tfp-nightly==0.7.0.dev20190501',  # Tensorflow Probability
         'progressbar',
         'numpy>=1.15.1',
         'scipy>=1.1.0',

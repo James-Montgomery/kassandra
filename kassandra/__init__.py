@@ -1,1 +1,1 @@
-from . import models
+from kassandra import regression
