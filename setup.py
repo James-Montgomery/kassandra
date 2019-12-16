@@ -19,7 +19,7 @@ setuptools.setup(
     url="https://github.com/James-Montgomery/kassandra",
     packages=setuptools.find_packages(),
     install_requires=[
-        'tensorflow==1.13.1',
+        'tensorflow==1.15.0',
         'tensorflow-probability==0.6.0',
         'numpy>=1.15.1',
         'scipy>=1.1.0',
