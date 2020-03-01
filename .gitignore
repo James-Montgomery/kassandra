@@ -26,6 +26,8 @@
 *.pptx
 *.doc
 
+logs
+
 !requirements*.txt
 
 ################################################################################
@@ -175,3 +177,5 @@ trash*
 my_model
 .DS_Store
 .ipynb_checkpoints
+
+!temp/*.ipynb

@@ -63,3 +63,6 @@ A big thank you to Josh Touyz who first introduced me to the world of deep learn
 [//]: # (TODOs)
 [//]: # (1. MCMC functionality)
 [//]: # (1. NN mean and GP residuals)
+
+[tfp blogpost](https://blog.tensorflow.org/2019/03/regression-with-probabilistic-layers-in.html)
+[tfp blogpost code](https://github.com/tensorflow/probability/blob/master/tensorflow_probability/examples/jupyter_notebooks/Probabilistic_Layers_Regression.ipynb)

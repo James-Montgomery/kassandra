@@ -372,6 +372,96 @@ class DVIFMLP(_base_class.NeuralNetwork):
 
 ################################################################################
 
+class DVIMLP(_base_class.NeuralNetwork):
+    """
+    Dropout Variational Inference for Multi-Layer Perceptron
+    """
+
+    def __init__(self, dropout_rate=0.5, weight_initializer="glorot_normal", *args, **kwargs):
+
+        super(DVIMLP, self).__init__(*args, **kwargs)
+
+        self._weight_initializer = WEIGHT_INITIALIZER[weight_initializer]
+        self._dropout_rate = dropout_rate
+
+        self.model = self._build()
+        self.model.compile(optimizer=self._optimizer, loss=self._loss)
+
+    def _build(self):
+
+        layers = []
+
+        # TODO: when using l2 regularization, do we need to chenge to
+        # SUM reduction for the loss functions?
+
+        # build hidden layers
+        for i in range(self._num_hidden_layers):
+            layers.append(
+                tf.keras.layers.Dense(self._num_hidden_units,
+                              kernel_initializer=self._weight_initializer,
+                              bias_initializer=self._weight_initializer,
+                              activation=self._activation)
+            )
+            layers.append(_vu.Dropout(rate=self._dropout_rate, training=True))
+
+        # classiffiation
+        if self._regression_flag is False:
+
+            # TODO: do we regularize the last layer?
+
+            # multiclass
+            if self._output_dim > 2:
+                self._loss = tf.keras.losses.CategoricalCrossentropy()
+                layers.append(tf.keras.layers.Dense(self._output_dim,
+                                activation="softmax"))
+            # binary
+            else:
+                self._loss = tf.keras.losses.BinaryCrossentropy()
+                layers.append(tf.keras.layers.Dense(1,
+                                activation="sigmoid"))
+
+        # regression
+        else:
+
+            if self._aleatoric_flag is False:
+                self._loss = tf.keras.losses.MeanSquaredError()
+                layers.append(tf.keras.layers.Dense(self._output_dim,
+                                activation=None))
+
+            else:
+
+                self._loss = lambda y, p_y: -p_y.log_prob(y)
+
+                if self._heteroskedastic is True:
+                    layers.append(tf.keras.layers.Dense(self._output_dim*2,
+                                    activation=None))
+                    layers.append(tfp.layers.DistributionLambda(
+                          lambda t: tfd.Normal(loc=t[..., :self._output_dim],
+                                               scale=1e-3+tf.math.softplus(0.05*t[..., self._output_dim:]))))
+
+                else:
+                    if self._aleatoric_stddev is not None:
+                        layers.append(tf.keras.layers.Dense(self._output_dim,
+                                    activation=None))
+                        layers.append(tfp.layers.DistributionLambda(lambda t:
+                           tfd.Normal(loc=t, scale=self._aleatoric_stddev)))
+
+                    else:
+                        raise Exception("Currently not supported.")
+
+        return tf.keras.Sequential(layers)
+
+    def sample_posterior(self, x_test):
+
+        if self._fitted is False:
+            logger.warning("Sample posterior called on a model that \
+                has not been fit to data. Not equivalent to sampling from \
+                the true prior.")
+
+        return self.model(x_test)
+
+################################################################################
+
 class MCMCMLP(_base_class.NeuralNetwork):
     """
     Markov Chain Monte Carlo for Multi-Layer Perceptron
