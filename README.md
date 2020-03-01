@@ -32,6 +32,11 @@ pip install "matplotlib>=2.2.3" "seaborn>=0.9.0"
 
 Examples and Tutorials can be found on the kassandra [docs site](https://james-montgomery.github.io/kassandra/).
 
+### Advice for Getting Better Results
+
+1. scale your inputs
+2. center your inputs
+
 ## Testing
 
 Testing is an important part of creating maintainable, production grade code. Below are instructions for running unit and style tests as well as installing the necessary testing packages. Tests have intentionally been separated from the installable pypi package for a variety of reasons.

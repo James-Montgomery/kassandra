@@ -167,3 +167,11 @@ dmypy.json
 .sources
 trash*
 .DS_Store
+
+################################################################################
+# Notebooks Folder
+
+!notebooks/*
+my_model
+.DS_Store
+.ipynb_checkpoints
