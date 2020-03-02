@@ -34,7 +34,9 @@ del get_versions
 
 try:
     # for local testing
-    from . import models
+    from . import tf_backend
+    from . import theano_backend
 except:
     # when installed
-    import kassandra.models
+    import kassandra.tf_backend
+    import kassandra.theano_backend
