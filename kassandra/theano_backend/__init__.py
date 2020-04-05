@@ -3,4 +3,4 @@ try:
     from . import models
 except:
     # when installed
-    import kassandra.theano_backend.models
+    from kassandra.theano_backend import models

@@ -3,4 +3,4 @@ try:
     from . import models
 except:
     # when installed
-    import kassandra.tf_backend.models
+    from kassandra.tf_backend import models

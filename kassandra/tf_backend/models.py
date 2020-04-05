@@ -1,3 +1,6 @@
+"""
+"""
+
 import tensorflow as tf
 import tensorflow_probability as tfp
 tfd = tfp.distributions
@@ -8,176 +11,104 @@ tf.get_logger().setLevel(logging.ERROR)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-try:
-    # when installed
-    from kassandra import _base_class
-    from kassandra import _variational_utilities as _vu
-except:
-    # for local testing
-    from . import _base_class
-    from . import _variational_utilities as _vu
+from kassandra import _base_class
+from kassandra.tf_backend import _tf_base_class
+from kassandra.tf_backend import _variational_utilities as _vu
+from kassandra.utilities import *
 
 ################################################################################
-
-def set_tf_seed(seed=49):
-    tf.random.set_seed(seed)
-
-################################################################################
-
-REGULARIZERS = {
-    "l1": "l1",
-    "l2": "l2",
-}
-
-WEIGHT_INITIALIZER = {
-    "glorot_normal": "glorot_normal",
-    "glorot_uniform": "glorot_uniform"
-}
 
 VARIATIONAL_DISTRIBUTIONS = {
-    "independant_gaussians": "independant_gaussians"
+    "independant gaussians": "independant gaussians",
+    "mean field approximation": "independant gaussians",
 }
 PRIOR_DISTRIBUTIONS = VARIATIONAL_DISTRIBUTIONS
 
 DISTRIBUTION_ATTRIBUTES = {
-    "independant_gaussians": ["mu", "std"]
+    "independant gaussians": ["mu", "std"],
+    "mean field approximation": ["mu", "std"]
 }
 
 ################################################################################
 
-class MLEMLP(_base_class.OptimizedNeuralNetwork):
-    """
-    Maximum Likelihood Estimate for Multi-Layer Perceptron
-    """
-
-    def __init__(self, regularization=None, weight_initializer="glorot_normal", *args, **kwargs):
-
-        super(MLEMLP, self).__init__(*args, **kwargs)
-
-        self._regularization = None if regularization is None \
-            else REGULARIZERS[regularization]
-        self._weight_initializer = WEIGHT_INITIALIZER[weight_initializer]
-
-        self.model = self._build()
-        self.model.compile(optimizer=self._optimizer, loss=self._loss)
-
-    def _build(self):
-
-        layers = []
-
-        # TODO: when using l2 regularization, do we need to chenge to
-        # SUM reduction for the loss functions?
-
-        # build hidden layers
-        for num_units in self._hidden_layers:
-            layers.append(
-                tf.keras.layers.Dense(num_units,
-                              kernel_initializer=self._weight_initializer,
-                              bias_initializer=self._weight_initializer,
-                              activation=self._activation,
-                              kernel_regularizer=self._regularization,
-                              bias_regularizer=self._regularization)
-            )
-
-        # classiffiation
-        if self._regression_flag is False:
-
-            # TODO: do we regularize the last layer?
-
-            # multiclass
-            if self._output_dim > 2:
-                self._loss = tf.keras.losses.CategoricalCrossentropy()
-                layers.append(tf.keras.layers.Dense(self._output_dim,
-                                activation="softmax",
-                                kernel_regularizer=self._regularization,
-                                bias_regularizer=self._regularization))
-            # binary
-            else:
-                self._loss = tf.keras.losses.BinaryCrossentropy()
-                layers.append(tf.keras.layers.Dense(1,
-                                activation="sigmoid",
-                                kernel_regularizer=self._regularization,
-                                bias_regularizer=self._regularization))
-
-        # regression
-        else:
-
-            if self._aleatoric_flag is False:
-                self._loss = tf.keras.losses.MeanSquaredError()
-                layers.append(tf.keras.layers.Dense(self._output_dim,
-                                activation=None,
-                                kernel_regularizer=self._regularization,
-                                bias_regularizer=self._regularization))
-
-            else:
-
-                # replace this lambda with a class
-                self._loss = lambda y, p_y: -p_y.log_prob(y)
-
-                if self._heteroskedastic is True:
-                    layers.append(tf.keras.layers.Dense(self._output_dim*2,
-                                    activation=None,
-                                    kernel_regularizer=self._regularization,
-                                    bias_regularizer=self._regularization))
-                    layers.append(tfp.layers.DistributionLambda(
-                          lambda t: tfd.Normal(loc=t[..., :self._output_dim],
-                                               scale=1e-3+tf.math.softplus(0.05*t[..., self._output_dim:]))))
-
-                else:
-                    if self._aleatoric_stddev is not None:
-                        layers.append(tf.keras.layers.Dense(self._output_dim,
-                                    activation=None,
-                                    kernel_regularizer=self._regularization,
-                                    bias_regularizer=self._regularization))
-                        layers.append(tfp.layers.DistributionLambda(lambda t:
-                           tfd.Normal(loc=t, scale=self._aleatoric_stddev)))
-
-                    else:
-                        raise Exception("Currently not supported.")
-
-        return tf.keras.Sequential(layers)
-
-    def predict(self, x_test):
-
-        if self._fitted is False:
-            logger.warning("Predict called on a model that \
-                has not been fit to data.")
-
-        return self.model(x_test)
-
-################################################################################
-
-class VIMLP(_base_class.OptimizedNeuralNetwork):
+class VIMLP(_tf_base_class.TensorflowModel, _base_class.BayesianModel):
     """
     Variational Inference for Multi-Layer Perceptron
     """
 
-    def __init__(self, variational_distribution="independant_gaussians",
-                 prior_distribution="independant_gaussians",
-                 prior_parameters={"mu": 0.0, "std": 1.0},
-                 kl_use_exact=True, fixed_batch_size=None, *args, **kwargs):
+    def __init__(self, variational_params=None,
+                 kl_use_exact=True, fixed_batch_size=None,
+                 *args, **kwargs):
+        """
+        """
 
         super(VIMLP, self).__init__(*args, **kwargs)
 
-        self._variational_distribution = VARIATIONAL_DISTRIBUTIONS[variational_distribution]
-        self._prior_distribution = PRIOR_DISTRIBUTIONS[prior_distribution]
-        self._prior_parameters = prior_parameters
+        if variational_params is None:
+            variational_params = {
+                "variational distribution": "independant gaussians",
+                "prior distribtution": "independant gaussians",
+                "prior parameters": {
+                    "mu": 0.0,
+                    "std": 1.0
+                }
+            }
+
+        if variational_params["variational distribution"] not in VARIATIONAL_DISTRIBUTIONS.keys():
+            raise ValueError("Invalid argument for variational distribution.")
+        if variational_params["prior distribution"] not in PRIOR_DISTRIBUTIONS.keys():
+            raise ValueError("Invalid argument for prior distribution.")
+
+        self._variational_distribution = variational_params["variational distribution"]
+        self._prior_distribution = variational_params["prior distribution"]
+        self._prior_parameters = variational_params["prior parameters"]
+
+        # make sure the kl divergence penalty is properly weighted
         self._kl_use_exact = kl_use_exact
-        self._kl_weight = None if fixed_batch_size is None else 1.0 / fixed_batch_size
+        self._kl_weight = None if fixed_batch_size is None else \
+            1.0 / fixed_batch_size
         self._reduction = "sum" if self._kl_weight is None else "auto"
 
         self.model = self._build()
         self.model.compile(optimizer=self._optimizer, loss=self._loss)
 
-    def _build_vi_params(self):
+    def get_prior(self, x_test):
+        """
+        """
+        check_array_input(x_test, "x_test")
+        super().get_prior()
 
-        if self._variational_distribution == "independant_gaussians":
+    def sample_prior(self, x_test):
+        """
+        """
+        check_array_input(x_test, "x_test")
+        super().sample_prior()
+
+    def get_prior_predictive(self, x_test):
+        """
+        """
+        check_array_input(x_test, "x_test")
+        super().get_prior_predictive()
+
+    def sample_prior_predictive(self, x_test):
+        """
+        """
+        check_array_input(x_test, "x_test")
+        super().sample_prior_predictive()
+
+    def _build_vi_params(self):
+        """
+        """
+
+        # build variational distribution
+        if self._variational_distribution == "independant gaussians":
             variational_distribution = _vu.gaussian_variational_distribution
         else:
             raise Exception("Unsupported variational distribution: {}".format(
                 self._variational_distribution))
 
-        if self._prior_distribution == "independant_gaussians":
+        # build prior distribution
+        if self._prior_distribution == "independant gaussians":
             mu, std = self._prior_parameters["mu"], self._prior_parameters["std"]
             if mu is not None and std is not None:
                 prior_distribution = _vu.fixed_gaussian_prior_distribution_wrapper(mu=mu, std=std)
@@ -191,7 +122,40 @@ class VIMLP(_base_class.OptimizedNeuralNetwork):
 
         return variational_distribution, prior_distribution
 
+    def _get_output_params(self):
+
+        if self._likelihood == "bernoulli": # binary classification
+            output_activation = "sigmoid"
+            self._loss = tf.keras.losses.BinaryCrossentropy(reduction=self._reduction)
+        elif self._likelihood == "categorical": # multiclass classification
+            output_activation = "softmax"
+            loss = tf.keras.losses.CategoricalCrossentropy(reduction=self._reduction)
+        else: # regression
+            output_activation = None
+            loss = _vu.NegativeLogLikelihood(reduction=self._reduction)
+
+        self._loss = loss
+        self._output_activation = output_activation
+
+    def _get_output_dimensions(self):
+
+        if self._likelihood == "bernoulli": # binary classification
+            return self._output_dim
+        elif self._likelihood == "categorical": # multiclass classification
+            return self._output_dim
+        elif "gaussian":
+            mu = self._likelihood_parameters["mu"]
+            std = self._likelihood_parameters["std"]
+        elif "student-t":
+            mu = self._likelihood_parameters["mu"]
+            std = self._likelihood_parameters["std"]
+            nu = self._likelihood_parameters["nu"]
+        else:
+            raise ValueError("Unsupported Likelihood distribution.")
+
     def _build(self):
+        """
+        """
 
         layers = []
 
@@ -201,7 +165,7 @@ class VIMLP(_base_class.OptimizedNeuralNetwork):
         # build hidden layers
         for num_units in self._hidden_layers:
             layers.append(
-                tfp.layers.DenseVariational(3,
+                tfp.layers.DenseVariational(num_units,
                                             variational_distribution,
                                             prior_distribution,
                                             kl_use_exact=self._kl_use_exact,
@@ -209,267 +173,62 @@ class VIMLP(_base_class.OptimizedNeuralNetwork):
                                             activation=tf.keras.activations.relu)
             )
 
-        # classiffiation
-        if self._regression_flag is False:
 
-            # multiclass
-            if self._output_dim > 2:
-                # keras sums KL regularization but tf averages loss
-                self._loss = tf.keras.losses.CategoricalCrossentropy(reduction=self._reduction)
-                layers.append(tfp.layers.DenseVariational(self._output_dim,
-                                    variational_distribution,
-                                    prior_distribution,
-                                    kl_use_exact=self._kl_use_exact,
-                                    kl_weight=self._kl_weight,
-                                    activation="softmax"))
+        # build output layer
 
-            # binary
-            else:
-                # keras sums KL regularization but tf averages loss
-                self._loss = tf.keras.losses.BinaryCrossentropy(reduction=self._reduction)
-                layers.append(tfp.layers.DenseVariational(1,
-                                    variational_distribution,
-                                    prior_distribution,
-                                    kl_use_exact=self._kl_use_exact,
-                                    kl_weight=self._kl_weight,
-                                    activation="sigmoid"))
+        self._get_output_params()
 
-        # regression
+        layers.append(tfp.layers.DenseVariational(output_dim,
+                            variational_distribution,
+                            prior_distribution,
+                            kl_use_exact=self._kl_use_exact,
+                            kl_weight=self._kl_weight,
+                            activation=self._output_activation))
+
+        if self._heteroskedastic is True:
+            layers.append(tfp.layers.DistributionLambda(
+                  lambda t: tfd.Normal(loc=t[..., :self._output_dim],
+                                       scale=1e-3+tf.math.softplus(0.05*t[..., self._output_dim:]))))
+
+        elif self._aleatoric_stddev is not None:
+                layers.append(tfp.layers.DistributionLambda(lambda t:
+                   tfd.Normal(loc=t, scale=self._aleatoric_stddev)))
         else:
-
-            if self._aleatoric_flag is False:
-                # keras sums KL regularization but tf averages loss
-                self._loss = tf.keras.losses.MeanSquaredError(reduction=self._reduction)
-                layers.append(tfp.layers.DenseVariational(self._output_dim,
-                                    variational_distribution,
-                                    prior_distribution,
-                                    kl_use_exact=self._kl_use_exact,
-                                    kl_weight=self._kl_weight,
-                                    activation=None))
-
-            else:
-
-                # keras sums KL regularization but tf averages loss
-                self._loss = _vu.VICorrectedNegativeLogLikelihood(reduction=self._reduction)
-                # TODO: replace loss lambdas with this class
-
-                if self._heteroskedastic is True:
-                    layers.append(tfp.layers.DenseVariational(self._output_dim*2,
-                                        variational_distribution,
-                                        prior_distribution,
-                                        kl_use_exact=self._kl_use_exact,
-                                        kl_weight=self._kl_weight,
-                                        activation=None))
-                    layers.append(tfp.layers.DistributionLambda(
-                          lambda t: tfd.Normal(loc=t[..., :self._output_dim],
-                                               scale=1e-3+tf.math.softplus(0.05*t[..., self._output_dim:]))))
-
-                else:
-                    if self._aleatoric_stddev is not None:
-                        layers.append(tfp.layers.DenseVariational(self._output_dim,
-                                            variational_distribution,
-                                            prior_distribution,
-                                            kl_use_exact=self._kl_use_exact,
-                                            kl_weight=self._kl_weight,
-                                            activation=None))
-                        layers.append(tfp.layers.DistributionLambda(lambda t:
-                           tfd.Normal(loc=t, scale=self._aleatoric_stddev)))
-
-                    else:
-                        raise Exception("Currently not supported.")
+            raise Exception("Estimating homoskedastic uncertainty is not "
+                            "supported for this model class.")
 
         return tf.keras.Sequential(layers)
 
+    @check_fitted
+    def get_posterior(self, x_test):
+        """
+        """
+        check_array_input(x_test, "x_test")
+        raise Exception("Direct estimation of posterior parameters is not "
+                        "supported for this model class. Please use the "
+                        "sample_posterior() method.")
+
+    @check_fitted
     def sample_posterior(self, x_test):
-
-        if self._fitted is False:
-            logger.warning("Sample posterior called on a model that \
-                has not been fit to data. Not equivalent to sampling from \
-                the true prior.")
-
+        """
+        """
+        check_array_input(x_test, "x_test")
         return self.model(x_test)
 
-################################################################################
+    @check_fitted
+    @check_aleatoric
+    def get_posterior_predictive(self, x_test):
+        """
+        """
+        check_array_input(x_test, "x_test")
+        raise Exception("Direct estimation of posterior predictive parameters "
+                        "is not supported for this model class. Please use the "
+                        "sample_posterior() method.")
 
-class DVIMLP(_base_class.OptimizedNeuralNetwork):
-    """
-    Dropout Variational Inference for Multi-Layer Perceptron
-    """
-
-    def __init__(self, dropout_rate=0.5, weight_initializer="glorot_normal", *args, **kwargs):
-
-        super(DVIMLP, self).__init__(*args, **kwargs)
-
-        self._weight_initializer = WEIGHT_INITIALIZER[weight_initializer]
-        self._dropout_rate = dropout_rate
-
-        self.model = self._build()
-        self.model.compile(optimizer=self._optimizer, loss=self._loss)
-
-    def _build(self):
-
-        layers = []
-
-        # TODO: when using l2 regularization, do we need to chenge to
-        # SUM reduction for the loss functions?
-
-        # build hidden layers
-        for num_units in self._hidden_layers:
-            layers.append(
-                tf.keras.layers.Dense(num_units,
-                              kernel_initializer=self._weight_initializer,
-                              bias_initializer=self._weight_initializer,
-                              activation=self._activation)
-            )
-            layers.append(_vu.Dropout(rate=self._dropout_rate, training=True))
-
-        # classiffiation
-        if self._regression_flag is False:
-
-            # TODO: do we regularize the last layer?
-
-            # multiclass
-            if self._output_dim > 2:
-                self._loss = tf.keras.losses.CategoricalCrossentropy()
-                layers.append(tf.keras.layers.Dense(self._output_dim,
-                                activation="softmax"))
-            # binary
-            else:
-                self._loss = tf.keras.losses.BinaryCrossentropy()
-                layers.append(tf.keras.layers.Dense(1,
-                                activation="sigmoid"))
-
-        # regression
-        else:
-
-            if self._aleatoric_flag is False:
-                self._loss = tf.keras.losses.MeanSquaredError()
-                layers.append(tf.keras.layers.Dense(self._output_dim,
-                                activation=None))
-
-            else:
-
-                self._loss = lambda y, p_y: -p_y.log_prob(y)
-
-                if self._heteroskedastic is True:
-                    layers.append(tf.keras.layers.Dense(self._output_dim*2,
-                                    activation=None))
-                    layers.append(tfp.layers.DistributionLambda(
-                          lambda t: tfd.Normal(loc=t[..., :self._output_dim],
-                                               scale=1e-3+tf.math.softplus(0.05*t[..., self._output_dim:]))))
-
-                else:
-                    if self._aleatoric_stddev is not None:
-                        layers.append(tf.keras.layers.Dense(self._output_dim,
-                                    activation=None))
-                        layers.append(tfp.layers.DistributionLambda(lambda t:
-                           tfd.Normal(loc=t, scale=self._aleatoric_stddev)))
-
-                    else:
-                        raise Exception("Currently not supported.")
-
-        return tf.keras.Sequential(layers)
-
-    def sample_posterior(self, x_test):
-
-        if self._fitted is False:
-            logger.warning("Sample posterior called on a model that \
-                has not been fit to data. Not equivalent to sampling from \
-                the true prior.")
-
+    @check_fitted
+    @check_aleatoric
+    def sample_posterior_predictive(self, x_test):
+        """
+        """
+        check_array_input(x_test, "x_test")
         return self.model(x_test)
-
-################################################################################
-
-class DVIFMLP(_base_class.OptimizedNeuralNetwork):
-    """
-    Dropout Variational Inference using Flipout for Multi-Layer Perceptron
-    """
-
-    def __init__(self, trainable_noise=True, *args, **kwargs):
-
-        super(DVIFMLP, self).__init__(*args, **kwargs)
-
-        self._trainable_noise = trainable_noise
-
-        self.model = self._build()
-        self.model.compile(optimizer=self._optimizer, loss=self._loss)
-
-    def _build(self):
-
-        layers = []
-
-        # build hidden layers
-        for num_units in self._hidden_layers:
-            layers.append(
-                tfp.layers.DenseFlipout(num_units,
-                              trainable=self._trainable_noise,
-                              activation=self._activation)
-            )
-
-        # classiffiation
-        if self._regression_flag is False:
-
-            # multiclass
-            if self._output_dim > 2:
-                self._loss = tf.keras.losses.CategoricalCrossentropy()
-                layers.append(tf.keras.layers.Dense(self._output_dim,
-                                activation="softmax"))
-            # binary
-            else:
-                self._loss = tf.keras.losses.BinaryCrossentropy()
-                layers.append(tf.keras.layers.Dense(1,
-                                activation="sigmoid"))
-
-        # regression
-        else:
-
-            if self._aleatoric_flag is False:
-                self._loss = tf.keras.losses.MeanSquaredError()
-                layers.append(tf.keras.layers.Dense(self._output_dim,
-                                activation=None))
-
-            else:
-
-                self._loss = lambda y, p_y: -p_y.log_prob(y)
-
-                if self._heteroskedastic is True:
-                    layers.append(tf.keras.layers.Dense(self._output_dim*2,
-                                    activation=None))
-                    layers.append(tfp.layers.DistributionLambda(
-                          lambda t: tfd.Normal(loc=t[..., :self._output_dim],
-                                               scale=1e-3+tf.math.softplus(0.05*t[..., self._output_dim:]))))
-
-                else:
-                    if self._aleatoric_stddev is not None:
-                        layers.append(tf.keras.layers.Dense(self._output_dim,
-                                    activation=None))
-                        layers.append(tfp.layers.DistributionLambda(lambda t:
-                           tfd.Normal(loc=t, scale=self._aleatoric_stddev)))
-
-                    else:
-                        raise Exception("Currently not supported.")
-
-        return tf.keras.Sequential(layers)
-
-    def sample_posterior(self, x_test):
-
-        if self._fitted is False:
-            logger.warning("Sample posterior called on a model that \
-                has not been fit to data. Not equivalent to sampling from \
-                the true prior.")
-
-        return self.model(x_test)
-
-################################################################################
-
-class MCMCMLP(_base_class.NeuralNetwork):
-    """
-    Markov Chain Monte Carlo for Multi-Layer Perceptron
-    """
-
-    def __init__(self):
-
-        super(MCMCMLP, self).__init__(*args, **kwargs)
-
-################################################################################

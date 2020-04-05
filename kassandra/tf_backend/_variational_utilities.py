@@ -13,11 +13,11 @@ logger = logging.getLogger(__name__)
 
 ################################################################################
 
-class VICorrectedNegativeLogLikelihood(tf.keras.losses.Loss):
+class NegativeLogLikelihood(tf.keras.losses.Loss):
 
     # default reduction is now SUM instead of auto
     def __init__(self, reduction=tf.keras.losses.Reduction.SUM,
-                 name='corrected_negative_log_likelihood'):
+                 name='vi_corrected_negative_log_likelihood'):
         super().__init__(reduction=reduction, name=name)
 
     def call(self, y, p_y):

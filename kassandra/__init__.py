@@ -26,11 +26,17 @@ models
     the module containing the model classes for deep learning
 """
 
+################################################################################
+
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 from ._version import get_versions
 __version__ = get_versions()['version']
 del get_versions
 
-# TODO: docstrings, type hinting, pylint, pytest, docs
+################################################################################
 
 try:
     # for local testing
@@ -38,5 +44,5 @@ try:
     from . import theano_backend
 except:
     # when installed
-    import kassandra.tf_backend
-    import kassandra.theano_backend
+    from kassandra import tf_backend
+    from kassandra import theano_backend
