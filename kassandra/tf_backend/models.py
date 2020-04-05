@@ -45,7 +45,7 @@ DISTRIBUTION_ATTRIBUTES = {
 
 ################################################################################
 
-class MLEMLP(_base_class.NeuralNetwork):
+class MLEMLP(_base_class.OptimizedNeuralNetwork):
     """
     Maximum Likelihood Estimate for Multi-Layer Perceptron
     """
@@ -69,9 +69,9 @@ class MLEMLP(_base_class.NeuralNetwork):
         # SUM reduction for the loss functions?
 
         # build hidden layers
-        for i in range(self._num_hidden_layers):
+        for num_units in self._hidden_layers:
             layers.append(
-                tf.keras.layers.Dense(self._num_hidden_units,
+                tf.keras.layers.Dense(num_units,
                               kernel_initializer=self._weight_initializer,
                               bias_initializer=self._weight_initializer,
                               activation=self._activation,
@@ -111,6 +111,7 @@ class MLEMLP(_base_class.NeuralNetwork):
 
             else:
 
+                # replace this lambda with a class
                 self._loss = lambda y, p_y: -p_y.log_prob(y)
 
                 if self._heteroskedastic is True:
@@ -146,7 +147,7 @@ class MLEMLP(_base_class.NeuralNetwork):
 
 ################################################################################
 
-class VIMLP(_base_class.NeuralNetwork):
+class VIMLP(_base_class.OptimizedNeuralNetwork):
     """
     Variational Inference for Multi-Layer Perceptron
     """
@@ -198,7 +199,7 @@ class VIMLP(_base_class.NeuralNetwork):
         variational_distribution, prior_distribution = self._build_vi_params()
 
         # build hidden layers
-        for i in range(self._num_hidden_layers):
+        for num_units in self._hidden_layers:
             layers.append(
                 tfp.layers.DenseVariational(3,
                                             variational_distribution,
@@ -290,16 +291,17 @@ class VIMLP(_base_class.NeuralNetwork):
 
 ################################################################################
 
-class DVIFMLP(_base_class.NeuralNetwork):
+class DVIMLP(_base_class.OptimizedNeuralNetwork):
     """
-    Dropout Variational Inference using Flipout for Multi-Layer Perceptron
+    Dropout Variational Inference for Multi-Layer Perceptron
     """
 
-    def __init__(self, trainable_noise=True, *args, **kwargs):
+    def __init__(self, dropout_rate=0.5, weight_initializer="glorot_normal", *args, **kwargs):
 
-        super(DVIFMLP, self).__init__(*args, **kwargs)
+        super(DVIMLP, self).__init__(*args, **kwargs)
 
-        self._trainable_noise = trainable_noise
+        self._weight_initializer = WEIGHT_INITIALIZER[weight_initializer]
+        self._dropout_rate = dropout_rate
 
         self.model = self._build()
         self.model.compile(optimizer=self._optimizer, loss=self._loss)
@@ -308,16 +310,23 @@ class DVIFMLP(_base_class.NeuralNetwork):
 
         layers = []
 
+        # TODO: when using l2 regularization, do we need to chenge to
+        # SUM reduction for the loss functions?
+
         # build hidden layers
-        for i in range(self._num_hidden_layers):
+        for num_units in self._hidden_layers:
             layers.append(
-                tfp.layers.DenseFlipout(self._num_hidden_units,
-                              trainable=self._trainable_noise,
+                tf.keras.layers.Dense(num_units,
+                              kernel_initializer=self._weight_initializer,
+                              bias_initializer=self._weight_initializer,
                               activation=self._activation)
             )
+            layers.append(_vu.Dropout(rate=self._dropout_rate, training=True))
 
         # classiffiation
         if self._regression_flag is False:
+
+            # TODO: do we regularize the last layer?
 
             # multiclass
             if self._output_dim > 2:
@@ -372,17 +381,16 @@ class DVIFMLP(_base_class.NeuralNetwork):
 
 ################################################################################
 
-class DVIMLP(_base_class.NeuralNetwork):
+class DVIFMLP(_base_class.OptimizedNeuralNetwork):
     """
-    Dropout Variational Inference for Multi-Layer Perceptron
+    Dropout Variational Inference using Flipout for Multi-Layer Perceptron
     """
 
-    def __init__(self, dropout_rate=0.5, weight_initializer="glorot_normal", *args, **kwargs):
+    def __init__(self, trainable_noise=True, *args, **kwargs):
 
-        super(DVIMLP, self).__init__(*args, **kwargs)
+        super(DVIFMLP, self).__init__(*args, **kwargs)
 
-        self._weight_initializer = WEIGHT_INITIALIZER[weight_initializer]
-        self._dropout_rate = dropout_rate
+        self._trainable_noise = trainable_noise
 
         self.model = self._build()
         self.model.compile(optimizer=self._optimizer, loss=self._loss)
@@ -391,23 +399,16 @@ class DVIMLP(_base_class.NeuralNetwork):
 
         layers = []
 
-        # TODO: when using l2 regularization, do we need to chenge to
-        # SUM reduction for the loss functions?
-
         # build hidden layers
-        for i in range(self._num_hidden_layers):
+        for num_units in self._hidden_layers:
             layers.append(
-                tf.keras.layers.Dense(self._num_hidden_units,
-                              kernel_initializer=self._weight_initializer,
-                              bias_initializer=self._weight_initializer,
+                tfp.layers.DenseFlipout(num_units,
+                              trainable=self._trainable_noise,
                               activation=self._activation)
             )
-            layers.append(_vu.Dropout(rate=self._dropout_rate, training=True))
 
         # classiffiation
         if self._regression_flag is False:
-
-            # TODO: do we regularize the last layer?
 
             # multiclass
             if self._output_dim > 2:
